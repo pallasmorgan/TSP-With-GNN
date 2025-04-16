@@ -67,6 +67,7 @@
     - Any additional experiments (e.g., different heuristics, alternative decoders).
         
     - Raw training logs or extended tables.
+    - Quantum Annealing and GNN for solving TSP with QUBO https://link.springer.com/chapter/10.1007/978-981-97-7801-0_12
         
 
 ---
