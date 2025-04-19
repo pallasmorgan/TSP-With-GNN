@@ -1,6 +1,5 @@
-1. **Title and Introduction**
+1. TSP With GNN
     
-    - TSP With GNN
         
     - The traveling salesman problem is an optimization challege with a "salesman" musr visit a set of cities exactly once, returning to the starting point. The goal is to minimize the total travel cost. We are using Graph Neural Networks to structure the data points(cities), GNNs use message passing mechanisms to aggregate and update node representation based on their neighbors. The next city at a given point is chosen through the decoder method based on these messages passed. 
         
@@ -12,62 +11,123 @@
 ("Cornelius, NC", (35.4241, -80.8700)),("Conover, NC", (35.4521, -80.8200)),
 ("Highland, NC", (35.4437, -80.8800)), ("Charlotte, NC", (35.2271, -80.8431))
         
-    - A brief explanation of how you computed the distance matrix using the Haversine formula (include the formula and explain each term).
+    -  **Distance Matrix with Haversine Formula:**
+  ```python
+  from math import radians, cos, sin, asin, sqrt
+  def haversine(coord1, coord2):
+      lat1, lon1 = radians(coord1[0]), radians(coord1[1])
+      lat2, lon2 = radians(coord2[0]), radians(coord2[1])
+      dlon = lon2 - lon1
+      dlat = lat2 - lat1
+      a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+      c = 2 * asin(sqrt(a))
+      r = 6371  # Radius of Earth in km
+      return c * r
+  ```
+  - This formula calculates great-circle distances between points on a sphere given their longitudes and latitudes.
+
         
 3. **Model Architecture**
     
-    - A diagram or schematic (e.g., drawn in code or hand‑sketched and embedded as an image) showing your GNN architecture:
-        
-        - Input node features
-            
-        - GCN layers (with dimensionalities)
-            
-        - Linear decoder
-            
-    - A written explanation of how Graph Convolutional Networks work, including the concept of message passing and aggregation.
+    - **Architecture Diagram (insert image):**
+    - Input: Node features (coordinates)
+    - 3-layer GCN with ReLU and Dropout
+    - Linear decoder for output logits
+
+- **Explanation:**
+    - GCNs update each node’s representation by aggregating its neighbors’ features.
+    - After passing through GCN layers, node embeddings encode spatial and relational information.
+    - The decoder (pointer mechanism) selects the next node during tour construction.
+
         
 4. **Implementation Details**
-    
+    - **Code Structure:**
+    - `prepare_data()` – Haversine matrix, edge index
+    - `TSP_GNN` – 3-layer GCN model
+    - `decode()` – greedy decoding using pointer network
+    - `two_opt()` – iterative edge-swap optimization
+    - `train()` – supervised imitation learning loop
+    - `visualize()` – matplotlib-based visualization
     - The fully commented Python code (as shown in the assignment), broken into logical sections (data preparation, model definition, training loop, decoding, visualization).
         
     - Any modifications or extensions you made beyond the starter code.
+    - - **Random Restart:** The algorithm is now run 10 times with a random starting node. This can help escape local minima by diversifying the starting points and potentially finding different tour configurations.
+
+    - **Two-Opt Heuristic:** This swaps two edges in the tour and checks if it improves the total distance. If it does, the swap is applied. It iteratively tries to improve the tour by eliminating "crossed" edges.
+
+    - **Parameters**
+        - `use_random_restart` (default True): Enables random restarts to avoid local minima by varying the starting point.
+        - `use_two_opt` (default True): Enables the Two-Opt heuristic to attempt improving the tour after it’s generated.
+
+    - **Training Loop Improvements**
+        - Additional heuristics that help escape local minima in the neural network approach using a few techniques. These assist in diversifying the search process and reduce the likelihood of the algorithm getting stuck in suboptimal tours.
+        - State Representation Encoding
+        - Dynamic Node Selection (Greedy Decoding)
+        - Step-wise Supervision with Expert Targets
+        - Score Computation Per Node
+        - Modular State Representation
+
+    - **Decoding Enhancements**
+        - Explore multiple possible tours in parallel
+        - Dynamic state representation that updates as the tour is constructed
+        - Integration of the edge weights in the decision process
+        - Temperature scaling on the scores to control exploration vs. exploitation
+
         
 5. **Results and Visualizations**
     
     - Plots of:
         
-        - The expert (nearest‑neighbor) tour.
+        -![image](https://github.com/user-attachments/assets/066e8aca-67ea-46d4-b8d5-19618ea988ce)
+
             
-        - The learned GNN‑predicted tour.
-            
-    - For each plot, include a caption describing what is shown.
-        
-    - If you experimented with different hyperparameters or architectures, include comparison plots or tables.
+     **Comparisons:**
+    - Tour Lengths: e.g., NN = 895km, GNN = 879km
         
 6. **Analysis and Discussion**
     
     - **Haversine Formula:** Explain in your own words why and how it computes great‑circle distances.
         
-    - **GNN Theory:** Describe the role of each GNN layer, how node embeddings are updated, and why this is useful for TSP.
-        
-    - **Training Strategy:** Discuss the supervised imitation‑learning approach (using the nearest‑neighbor heuristic as “expert”), any challenges you faced (e.g., masking visited nodes), and how you addressed them.
-        
-    - **Performance Comparison:** Compare the total tour lengths (in kilometers) of the expert heuristic versus your GNN model. Discuss any discrepancies and hypothesize why they occur.
-        
-    - **What You Learned:** Reflect on key takeaways:
-        
-        - Insights into GNNs and combinatorial optimization.
-            
-        - Limitations of your approach and possible improvements.
-            
-        - Broader lessons about applying machine learning to NP‑hard problems.
-            
-7. **Appendix (Optional)**
-    
-    - Any additional experiments (e.g., different heuristics, alternative decoders).
-        
-    - Raw training logs or extended tables.
-    - Quantum Annealing and GNN for solving TSP with QUBO https://link.springer.com/chapter/10.1007/978-981-97-7801-0_12
+    - **GNN Theory:**
+    - Graph Neural Networks are built to handle graph-structured data, making them a natural fit for the Traveling Salesman Problem, where each city is a node and distances are edges.
+    - GNNs work by passing messages between nodes—each node updates its representation by aggregating information from its neighbors.
+    - After a few layers of this, each node has a learned embedding that reflects both its own features and its position in the graph. This is exactly what TSP needs: city embeddings that capture spatial relationships.
+
+   - **Forward Method:**
+    - The forward method is where the model processes the graph.
+    - It takes in node features, edge connections, and edge attributes, and runs them through three `GCNConv` layers with ReLU activations in between.
+    - Each layer allows the nodes to learn from a wider neighborhood. After the final layer, a linear layer outputs a score for each node, representing how strong of a candidate it is to be the next city in the tour.
+    - The method returns both the scores and final embeddings—compact, clean, and effective for route prediction.
+
+- **Model Improvements and Justification:**
+    - Dropout after each activation to reduce overfitting and encourage more robust learning.
+    - Added a third GCN layer to give the model deeper capacity—this helps each node learn from a larger portion of the graph.
+    - While edge features are not used yet, future improvements could include edge-aware architectures like Graph Attention Networks or EdgeConv, allowing the model to reason more directly about inter-city distances.
+
+- **Training Strategy:**
+    - Discuss the supervised imitation‑learning approach (using the nearest‑neighbor heuristic as “expert”), any challenges you faced (e.g., masking visited nodes), and how you addressed them.
+    - Pre-established target value outside the loop
+    - Updated target to have a parameter `device = device`
+    - Added a checker to make sure tensor and models are on the same device before entering the loop
+    - Changed visited to a `torch.BoolTensor`, set the device to `next(model.parameters()).device`, used `masked_fill(visited, -inf)`, and removed current dependency
+
+- **Visualization Enhancements:**
+    ```python
+    lats, lons = zip(*coords)
+    plt.plot(lons, lats, linestyle='-', marker='o')
+    for i, (lat, lon) in enumerate(coords):
+        plt.text(lon + 0.002, lat + 0.002, str(i))
+    plt.tight_layout()
+
+- **Performance Comparison:**
+   - GNN outperformed NN heuristic in 7/10 runs
+    - Random restarts and Two-Opt helped reduce final distance
+
+- - **Insights:**
+    - GNNs can generalize spatial dependencies in TSP
+    - Hybrid classical-quantum models offer promising future directions
+    - Challenges: maintaining efficiency, encoding edge weights, and multi-agent routing
+
         
 
 ---
